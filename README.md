@@ -9,19 +9,19 @@ Este repositorio contiene la aplicación de Banorte con frontend en Next.js y un
    Configura un archivo `.env.local` (puedes usar `env.local.example` como base) con las variables:
 
    ```bash
-   NEXT_PUBLIC_SUPABASE_URL="https://<tu-proyecto>.supabase.co"
-   NEXT_PUBLIC_SUPABASE_ANON_KEY="<tu-clave-anonima>"
+   NEXT_PUBLIC_SUPABASE_URL="https://ipzitalmkqqvowfafpbh.supabase.co"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlweml0YWxta3Fxdm93ZmFmcGJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMTM0NjcsImV4cCI6MjA3Njg4OTQ2N30.YqeDj6fmwhY6pJ2gxbYKZfuvcux1AhdJsX6jHjaityk"
    NEXT_PUBLIC_MCP_API_URL="http://127.0.0.1:8000"
    ```
-
+   
 2. **Backend (FastAPI)**
 
    Crea un archivo `.env` dentro de `mcp_financiero_backend/` con:
 
    ```bash
-   SUPABASE_URL="https://<tu-proyecto>.supabase.co"
-   SUPABASE_SERVICE_KEY="<tu-service-role-key>"
-   GEMINI_API_KEY="<tu-api-key-de-gemini>"
+   SUPABASE_URL="https://ipzitalmkqqvowfafpbh.supabase.co"
+   SUPABASE_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlweml0YWxta3Fxdm93ZmFmcGJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTMxMzQ2NywiZXhwIjoyMDc2ODg5NDY3fQ.4oSrYz9WJfDGc8j-ouu0Z_sqghl7pGnVA7-Ij1GBduU"
+   GEMINI_API_KEY="AIzaSyA7y71LIvxNYEftupYOKY2J3unFMIdQBfc"
    ```
 
 3. **Base de datos Supabase**
