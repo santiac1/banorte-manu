@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartConfig,
@@ -9,8 +9,10 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
-import { getPersonalExpenses } from "@/services/personalExpenses";
-import { getCompanyExpenses } from "@/services/companyExpenses";
+import {
+  fetchAnalyticsOverview,
+  AnalyticsOverviewResponse,
+} from "@/services/mcpBackend";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import {
   SidebarProvider,
@@ -153,6 +155,9 @@ export default function DashboardPage() {
   const [totalExpenses, setTotalExpenses] = useState<number>(0);
   const [dailyExpenses, setDailyExpenses] = useState<DailyExpense[]>([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState<MonthlyExpense[]>([]);
+  const [overview, setOverview] = useState<AnalyticsOverviewResponse | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -171,131 +176,49 @@ export default function DashboardPage() {
     setUserId(storedUserId);
 
     loadDashboardData(storedUserType, storedUserId);
-  }, []);
+  }, [loadDashboardData]);
 
-  const loadDashboardData = async (
-    type: "personal" | "company",
-    id: string
-  ) => {
-    setIsLoading(true);
-    try {
-      if (type === "personal") {
-        const data = await getPersonalExpenses(parseInt(id));
-        calculatePersonalStats(data);
-      } else {
-        const data = await getCompanyExpenses(id);
-        calculateCompanyStats(data);
+  const loadDashboardData = useCallback(
+    async (type: "personal" | "company", id: string) => {
+      setIsLoading(true);
+      try {
+        const analytics = await fetchAnalyticsOverview(
+          type,
+          type === "company" ? id : undefined
+        );
+        setOverview(analytics);
+        updateDashboardFromOverview(analytics);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    },
+    []
+  );
+  const updateDashboardFromOverview = (analytics: AnalyticsOverviewResponse) => {
+    setTotalIncome(analytics.total_income);
+    setTotalExpenses(analytics.total_expenses);
+    setDailyExpenses(
+      analytics.daily_expenses.map((item) => ({
+        date: item.date,
+        amount: item.amount,
+      }))
+    );
+    setMonthlyExpenses(
+      analytics.monthly_expenses.map((item) => ({
+        month: item.month,
+        amount: item.amount,
+      }))
+    );
   };
 
-  const calculatePersonalStats = (transactions: any[]) => {
-    const income = transactions
-      .filter((t) => t.tipo === "ingreso")
-      .reduce((sum, t) => sum + t.monto, 0);
-
-    const expenses = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((sum, t) => sum + t.monto, 0);
-
-    setTotalIncome(income);
-    setTotalExpenses(expenses);
-
-    // Agrupar gastos por día (últimos 7 días)
-    const expensesByDay = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((acc: { [key: string]: number }, t) => {
-        const date = new Date(t.fecha).toLocaleDateString("es-MX", {
-          month: "short",
-          day: "numeric",
-        });
-        acc[date] = (acc[date] || 0) + t.monto;
-        return acc;
-      }, {});
-
-    const dailyData = Object.entries(expensesByDay)
-      .map(([date, amount]) => ({ date, amount }))
-      .slice(-7);
-
-    setDailyExpenses(dailyData);
-
-    // Agrupar gastos por mes (últimos 6 meses)
-    const expensesByMonth = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((acc: { [key: string]: number }, t) => {
-        const date = new Date(t.fecha);
-        const month = date.toLocaleDateString("es-MX", {
-          month: "long",
-          year: "numeric",
-        });
-        acc[month] = (acc[month] || 0) + t.monto;
-        return acc;
-      }, {});
-
-    const monthlyData = Object.entries(expensesByMonth)
-      .map(([month, amount]) => ({ month, amount }))
-      .slice(-6);
-
-    setMonthlyExpenses(monthlyData);
-  };
-
-  const calculateCompanyStats = (transactions: any[]) => {
-    const income = transactions
-      .filter((t) => t.tipo === "ingreso")
-      .reduce((sum, t) => sum + t.monto, 0);
-
-    const expenses = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((sum, t) => sum + t.monto, 0);
-
-    setTotalIncome(income);
-    setTotalExpenses(expenses);
-
-    // Agrupar gastos por día (últimos 7 días)
-    const expensesByDay = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((acc: { [key: string]: number }, t) => {
-        const date = new Date(t.fecha).toLocaleDateString("es-MX", {
-          month: "short",
-          day: "numeric",
-        });
-        acc[date] = (acc[date] || 0) + t.monto;
-        return acc;
-      }, {});
-
-    const dailyData = Object.entries(expensesByDay)
-      .map(([date, amount]) => ({ date, amount }))
-      .slice(-7);
-
-    setDailyExpenses(dailyData);
-
-    // Agrupar gastos por mes (últimos 6 meses)
-    const expensesByMonth = transactions
-      .filter((t) => t.tipo === "gasto")
-      .reduce((acc: { [key: string]: number }, t) => {
-        const date = new Date(t.fecha);
-        const month = date.toLocaleDateString("es-MX", {
-          month: "long",
-          year: "numeric",
-        });
-        acc[month] = (acc[month] || 0) + t.monto;
-        return acc;
-      }, {});
-
-    const monthlyData = Object.entries(expensesByMonth)
-      .map(([month, amount]) => ({ month, amount }))
-      .slice(-6);
-
-    setMonthlyExpenses(monthlyData);
-  };
-
-  const netBalance = totalIncome - totalExpenses;
-  const balancePercentage =
-    totalIncome > 0 ? ((netBalance / totalIncome) * 100).toFixed(1) : "0";
+  const netBalance = overview?.net_balance ?? totalIncome - totalExpenses;
+  const balancePercentage = overview
+    ? overview.balance_percentage.toFixed(1)
+    : totalIncome > 0
+    ? ((netBalance / totalIncome) * 100).toFixed(1)
+    : "0";
 
   if (isLoading) {
     return (

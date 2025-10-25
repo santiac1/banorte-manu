@@ -22,6 +22,47 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
+  const establishSupabaseSession = async (
+    type: "personal" | "company",
+    id: string
+  ) => {
+    await supabase.auth.signOut();
+
+    const { data: signInData, error: signInError } =
+      await supabase.auth.signInAnonymously();
+
+    if (signInError || !signInData.session) {
+      throw new Error(
+        signInError?.message || "No se pudo iniciar una sesión segura en Supabase"
+      );
+    }
+
+    const numericId = parseInt(id, 10);
+
+    if (type === "personal" && Number.isNaN(numericId)) {
+      throw new Error("El identificador del usuario personal debe ser numérico");
+    }
+
+    const metadata: Record<string, unknown> = {
+      app_user_id: type === "personal" ? numericId : 0,
+      user_type: type,
+    };
+
+    if (type === "company") {
+      metadata.company_id = id;
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: metadata,
+    });
+
+    if (updateError) {
+      throw new Error(
+        `No se pudo actualizar el perfil seguro del usuario: ${updateError.message}`
+      );
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -64,6 +105,7 @@ export default function LoginPage() {
       }
 
       if (authResult.success) {
+        await establishSupabaseSession(userType, userId);
         // Guardar información de la sesión
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userType", userType);
@@ -144,7 +186,29 @@ export default function LoginPage() {
               required
               className="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               placeholder={userType === "personal" ? "Ej: 47" : "Ej: E016"}
+              list={
+                userType === "personal"
+                  ? "personal-user-ids"
+                  : "company-ids"
+              }
             />
+            {userType === "personal" ? (
+              <datalist id="personal-user-ids">
+                {users.map((user) => (
+                  <option key={user.id} value={user.id.toString()}>
+                    {user.name || `Usuario ${user.id}`}
+                  </option>
+                ))}
+              </datalist>
+            ) : (
+              <datalist id="company-ids">
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name || company.id}
+                  </option>
+                ))}
+              </datalist>
+            )}
           </div>
 
           {/* Campo de Nombre */}
@@ -169,7 +233,31 @@ export default function LoginPage() {
                   ? "Ej: Usuario Demo"
                   : "Ej: E016 SA de CV"
               }
+              list={
+                userType === "personal"
+                  ? "personal-user-names"
+                  : "company-names"
+              }
             />
+            {userType === "personal" ? (
+              <datalist id="personal-user-names">
+                {users.map((user) => (
+                  <option
+                    key={user.id}
+                    value={user.name || `Usuario ${user.id}`}
+                  />
+                ))}
+              </datalist>
+            ) : (
+              <datalist id="company-names">
+                {companies.map((company) => (
+                  <option
+                    key={company.id}
+                    value={company.name || company.id}
+                  />
+                ))}
+              </datalist>
+            )}
           </div>
 
           {error && (

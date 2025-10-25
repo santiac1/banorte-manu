@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import BanorteLogo from "./BanorteLogo";
+import supabase from "@/services/supabase";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -29,12 +30,13 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar = ({ userType, userId }: DashboardSidebarProps) => {
-  const handleNavigation = (path: string) => {
+  const handleNavigation = async (path: string) => {
     if (path === "/logout") {
+      await supabase.auth.signOut();
       sessionStorage.clear();
-      window.location.href = "/login";
+      window.location.assign("/login");
     } else {
-      window.location.href = path;
+      window.location.assign(path);
     }
   };
 

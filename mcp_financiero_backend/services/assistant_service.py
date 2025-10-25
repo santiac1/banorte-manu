@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Optional
 
+from fastapi import HTTPException
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from supabase import Client
@@ -28,24 +29,42 @@ def _get_chat_model() -> ChatGoogleGenerativeAI:
 
 
 async def get_ai_recommendation(user_id: str, query: str, db_client: Client) -> ChatResponse:
+    try:
+        personal_user_id = int(user_id)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive
+        raise HTTPException(
+            status_code=400,
+            detail="El identificador del usuario no es válido para las transacciones personales.",
+        ) from exc
+
     transactions = (
-        db_client.table("transactions")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("date", desc=True)
+        db_client.table("personal_tx")
+        .select("fecha, monto, tipo, categoria, descripcion")
+        .eq("user_id", personal_user_id)
+        .order("fecha", desc=True)
         .limit(100)
         .execute()
     )
     goals = (
         db_client.table("financial_goals")
         .select("*")
-        .eq("user_id", user_id)
+        .eq("user_id", personal_user_id)
         .execute()
     )
 
+    tx_records = transactions.data or []
+    goals_records = goals.data or []
+
     context = (
-        f"Transacciones recientes: {transactions.data}\n"
-        f"Metas financieras activas: {goals.data}"
+        "Transacciones recientes (fecha, tipo, monto, categoría, nota): "
+        f"{[{
+            'fecha': tx.get('fecha'),
+            'tipo': tx.get('tipo'),
+            'monto': tx.get('monto'),
+            'categoria': tx.get('categoria'),
+            'descripcion': tx.get('descripcion'),
+        } for tx in tx_records]}\n"
+        f"Metas financieras activas: {goals_records}"
     )
 
     messages = [
