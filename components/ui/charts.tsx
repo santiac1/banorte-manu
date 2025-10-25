@@ -47,49 +47,52 @@ export function SimpleChart({ data, title, type, height = 200 }: ChartProps) {
 
   if (type === 'pie') {
     const total = data.reduce((sum, item) => sum + item.value, 0);
-    let cumulativePercentage = 0;
-    
+    const radius = height / 2 - 10;
+    const circumference = 2 * Math.PI * radius;
+    const segments = data.map((item, index) => {
+      const percentage = total > 0 ? (item.value / total) * 100 : 0;
+      const start = data
+        .slice(0, index)
+        .reduce((acc, current) => acc + (total > 0 ? (current.value / total) * 100 : 0), 0);
+      return {
+        item,
+        index,
+        percentage,
+        start,
+        color: item.color || `hsl(${index * 60}, 70%, 50%)`,
+      };
+    });
+
     return (
       <div className="bg-white p-4 rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">{title}</h3>
         <div className="flex items-center">
           <div className="relative" style={{ width: height, height }}>
             <svg width={height} height={height} className="transform -rotate-90">
-              {data.map((item, index) => {
-                const percentage = (item.value / total) * 100;
-                const strokeDasharray = `${percentage} ${100 - percentage}`;
-                const strokeDashoffset = -cumulativePercentage;
-                cumulativePercentage += percentage;
-                
-                return (
-                  <circle
-                    key={index}
-                    cx={height / 2}
-                    cy={height / 2}
-                    r={height / 2 - 10}
-                    fill="transparent"
-                    stroke={item.color || `hsl(${index * 60}, 70%, 50%)`}
-                    strokeWidth="20"
-                    strokeDasharray={strokeDasharray}
-                    strokeDashoffset={strokeDashoffset}
-                    style={{
-                      strokeDasharray: `${(item.value / total) * 2 * Math.PI * (height / 2 - 10)} ${2 * Math.PI * (height / 2 - 10)}`,
-                      strokeDashoffset: -cumulativePercentage + (item.value / total) * 2 * Math.PI * (height / 2 - 10)
-                    }}
-                  />
-                );
-              })}
+              {segments.map(({ index, percentage, start, color }) => (
+                <circle
+                  key={index}
+                  cx={height / 2}
+                  cy={height / 2}
+                  r={radius}
+                  fill="transparent"
+                  stroke={color}
+                  strokeWidth="20"
+                  strokeDasharray={`${(percentage / 100) * circumference} ${circumference}`}
+                  strokeDashoffset={-(start / 100) * circumference}
+                />
+              ))}
             </svg>
           </div>
           <div className="ml-6 space-y-2">
-            {data.map((item, index) => (
+            {segments.map(({ item, index, percentage, color }) => (
               <div key={index} className="flex items-center">
                 <div
                   className="w-4 h-4 rounded mr-2"
-                  style={{ backgroundColor: item.color || `hsl(${index * 60}, 70%, 50%)` }}
+                  style={{ backgroundColor: color }}
                 ></div>
                 <span className="text-sm text-gray-700">
-                  {item.label}: ${item.value.toLocaleString()} ({((item.value / total) * 100).toFixed(1)}%)
+                  {item.label}: ${item.value.toLocaleString()} ({percentage.toFixed(1)}%)
                 </span>
               </div>
             ))}

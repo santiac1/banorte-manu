@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 import pandas as pd
+from fastapi import HTTPException
 from prophet import Prophet
 from supabase import Client
 
@@ -14,31 +15,31 @@ def _prepare_time_series(transactions: list[Dict[str, Any]]) -> pd.DataFrame:
     if not transactions:
         base_date = pd.Timestamp(datetime.utcnow()).normalize()
         data = {
-            "date": pd.date_range(base_date - pd.DateOffset(months=11), periods=12, freq="MS"),
-            "amount": [0.0] * 12,
+            "fecha": pd.date_range(base_date - pd.DateOffset(months=11), periods=12, freq="MS"),
+            "monto": [0.0] * 12,
         }
     else:
         df = pd.DataFrame(transactions)
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date")
-        df["amount"] = df["amount"].astype(float)
+        df["fecha"] = pd.to_datetime(df["fecha"])
+        df = df.sort_values("fecha")
+        df["monto"] = df["monto"].astype(float)
         data = (
-            df.groupby(pd.Grouper(key="date", freq="MS"))["amount"].sum().reset_index()
+            df.groupby(pd.Grouper(key="fecha", freq="MS"))["monto"].sum().reset_index()
         )
-        data.columns = ["date", "amount"]
+        data.columns = ["fecha", "monto"]
         if data.shape[0] < 6:
             all_months = pd.date_range(
-                start=data["date"].min() - pd.DateOffset(months=5),
-                end=data["date"].max(),
+                start=data["fecha"].min() - pd.DateOffset(months=5),
+                end=data["fecha"].max(),
                 freq="MS",
             )
             data = (
-                data.set_index("date")
+                data.set_index("fecha")
                 .reindex(all_months, fill_value=0.0)
-                .rename_axis("date")
+                .rename_axis("fecha")
                 .reset_index()
             )
-    series = pd.DataFrame({"ds": data["date"], "y": data["amount"]})
+    series = pd.DataFrame({"ds": data["fecha"], "y": data["monto"]})
     return series
 
 
@@ -55,11 +56,19 @@ def _apply_parameters(forecast: pd.DataFrame, parameters: Dict[str, Any]) -> pd.
 async def run_financial_simulation(
     user_id: str, name: str, parameters: Dict[str, Any], db_client: Client
 ) -> SimulationResponse:
+    try:
+        personal_user_id = int(user_id)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive
+        raise HTTPException(
+            status_code=400,
+            detail="El identificador del usuario no es válido para las transacciones personales.",
+        ) from exc
+
     transactions_response = (
-        db_client.table("transactions")
-        .select("date, amount")
-        .eq("user_id", user_id)
-        .order("date", desc=False)
+        db_client.table("personal_tx")
+        .select("fecha, monto")
+        .eq("user_id", personal_user_id)
+        .order("fecha", desc=False)
         .execute()
     )
 
@@ -86,7 +95,7 @@ async def run_financial_simulation(
         db_client.table("simulations")
         .insert(
             {
-                "user_id": user_id,
+                "user_id": personal_user_id,
                 "name": name,
                 "parameters": parameters,
             }

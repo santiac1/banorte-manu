@@ -17,6 +17,19 @@ async def get_current_user_id(
         user = user_response.user
         if not user:
             raise HTTPException(status_code=401, detail="Usuario no válido")
-        return user.id
+
+        metadata = user.user_metadata or {}
+        app_user_id = metadata.get("app_user_id")
+
+        if app_user_id is None:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "El token no contiene el identificador app_user_id requerido "
+                    "para interactuar con la base de datos principal."
+                ),
+            )
+
+        return str(app_user_id)
     except Exception as exc:  # pragma: no cover - supabase client handles details
         raise HTTPException(status_code=401, detail=f"Token inválido: {exc}")

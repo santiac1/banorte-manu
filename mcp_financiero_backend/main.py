@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.v1 import endpoint_chat, endpoint_simulate
+from api.v1 import endpoint_analytics, endpoint_chat, endpoint_simulate
 
 app = FastAPI(title="Banorte MCP Financiero API", version="1.0.0")
 
@@ -16,6 +16,9 @@ app.add_middleware(
 app.include_router(endpoint_chat.router, prefix="/api/v1/chat", tags=["Asistente IA"])
 app.include_router(
     endpoint_simulate.router, prefix="/api/v1/simulate", tags=["Simulador What-If"]
+)
+app.include_router(
+    endpoint_analytics.router, prefix="/api/v1/analytics", tags=["Analítica Financiera"]
 )
 
 
